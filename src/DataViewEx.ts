@@ -1,330 +1,238 @@
-/**
- * @author takahiro / https://github.com/takahirox
- */
-
 import { CharsetEncoder } from "./CharsetEncoder";
 
-function DataViewEx ( buffer, littleEndian ) {
+export type IndexType = 1 | 2 | 4;
 
-    this.dv = new DataView( buffer );
-    this.offset = 0;
-    this.littleEndian = ( littleEndian !== undefined ) ? littleEndian : true;
-    this.encoder = new CharsetEncoder();
+export class DataViewEx {
+    public readonly littleEndian: boolean;
 
-}
+    private _offset: number;
+    private readonly _dv: DataView;
 
-DataViewEx.prototype = {
+    public constructor(buffer: ArrayBufferLike, littleEndian = true) {
+        this._dv = new DataView(buffer);
+        this._offset = 0;
+        this.littleEndian = (littleEndian !== undefined) ? littleEndian : true;
+    }
 
-    constructor: DataViewEx,
+    public get offset(): number {
+        return this._offset;
+    }
 
-    getInt8: function () {
-
-        const value = this.dv.getInt8( this.offset );
-        this.offset += 1;
+    public getInt8(): number {
+        const value = this._dv.getInt8(this._offset);
+        this._offset += 1;
         return value;
+    }
 
-    },
-
-    getInt8Array: function ( size ) {
-
+    public getInt8Array(size: number): number[] {
         const a = [];
 
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getInt8() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getInt8());
         }
 
         return a;
+    }
 
-    },
-
-    getUint8: function () {
-
-        const value = this.dv.getUint8( this.offset );
-        this.offset += 1;
+    public getUint8(): number {
+        const value = this._dv.getUint8(this._offset);
+        this._offset += 1;
         return value;
+    }
 
-    },
+    public getUint8Array(size: number): number[] {
+        const a: number[] = [];
 
-    getUint8Array: function ( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getUint8() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getUint8());
         }
 
         return a;
+    }
 
-    },
 
-
-    getInt16: function () {
-
-        const value = this.dv.getInt16( this.offset, this.littleEndian );
-        this.offset += 2;
+    public getInt16(): number {
+        const value = this._dv.getInt16(this._offset, this.littleEndian);
+        this._offset += 2;
         return value;
+    }
 
-    },
+    public getInt16Array(size: number): number[] {
+        const a: number[] = [];
 
-    getInt16Array: function ( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getInt16() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getInt16());
         }
 
         return a;
+    }
 
-    },
-
-    getUint16: function () {
-
-        const value = this.dv.getUint16( this.offset, this.littleEndian );
-        this.offset += 2;
+    public getUint16(): number {
+        const value = this._dv.getUint16(this._offset, this.littleEndian);
+        this._offset += 2;
         return value;
+    }
 
-    },
+    public getUint16Array(size: number): number[] {
+        const a: number[] = [];
 
-    getUint16Array: function ( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getUint16() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getUint16());
         }
 
         return a;
+    }
 
-    },
-
-    getInt32: function () {
-
-        const value = this.dv.getInt32( this.offset, this.littleEndian );
-        this.offset += 4;
+    public getInt32(): number {
+        const value = this._dv.getInt32(this._offset, this.littleEndian);
+        this._offset += 4;
         return value;
+    }
 
-    },
+    public getInt32Array(size: number): number[] {
+        const a: number[] = [];
 
-    getInt32Array: function ( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getInt32() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getInt32());
         }
 
         return a;
+    }
 
-    },
-
-    getUint32: function () {
-
-        const value = this.dv.getUint32( this.offset, this.littleEndian );
-        this.offset += 4;
+    public getUint32(): number {
+        const value = this._dv.getUint32(this._offset, this.littleEndian);
+        this._offset += 4;
         return value;
+    }
 
-    },
+    public getUint32Array(size: number): number[] {
+        const a: number[] = [];
 
-    getUint32Array: function ( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getUint32() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getUint32());
         }
 
         return a;
+    }
 
-    },
-
-    getFloat32: function () {
-
-        const value = this.dv.getFloat32( this.offset, this.littleEndian );
-        this.offset += 4;
+    public getFloat32(): number {
+        const value = this._dv.getFloat32(this._offset, this.littleEndian);
+        this._offset += 4;
         return value;
+    }
 
-    },
+    public getFloat32Array(size: number): number[] {
+        const a: number[] = [];
 
-    getFloat32Array: function( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getFloat32() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getFloat32());
         }
 
         return a;
+    }
 
-    },
-
-    getFloat64: function () {
-
-        const value = this.dv.getFloat64( this.offset, this.littleEndian );
-        this.offset += 8;
+    public getFloat64(): number {
+        const value = this._dv.getFloat64(this._offset, this.littleEndian);
+        this._offset += 8;
         return value;
+    }
 
-    },
+    public getFloat64Array(size: number): number[] {
+        const a: number[] = [];
 
-    getFloat64Array: function( size ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getFloat64() );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getFloat64());
         }
 
         return a;
+    }
 
-    },
-
-    getIndex: function ( type, isUnsigned ) {
-
-        switch ( type ) {
-
+    public getIndex(type: IndexType, isUnsigned: boolean): number {
+        switch (type) {
         case 1:
-            return ( isUnsigned === true ) ? this.getUint8() : this.getInt8();
-
+            return (isUnsigned === true) ? this.getUint8() : this.getInt8();
         case 2:
-            return ( isUnsigned === true ) ? this.getUint16() : this.getInt16();
-
+            return (isUnsigned === true) ? this.getUint16() : this.getInt16();
         case 4:
             return this.getInt32(); // No Uint32
-
         default:
             throw "unknown number type " + type + " exception.";
-
         }
+    }
 
-    },
+    public getIndexArray(type: IndexType, size: number, isUnsigned: boolean): number[] {
+        const a: number[] = [];
 
-    getIndexArray: function ( type, size, isUnsigned ) {
-
-        const a = [];
-
-        for ( let i = 0; i < size; i++ ) {
-
-            a.push( this.getIndex( type, isUnsigned ) );
-
+        for (let i = 0; i < size; i++) {
+            a.push(this.getIndex(type, isUnsigned));
         }
 
         return a;
+    }
 
-    },
-
-    getChars: function ( size ) {
-
+    public getChars(size: number): string {
         let str = "";
 
-        while ( size > 0 ) {
-
+        while (size > 0) {
             const value = this.getUint8();
             size--;
 
-            if ( value === 0 ) {
+            if (value === 0) break;
 
-                break;
-
-            }
-
-            str += String.fromCharCode( value );
-
+            str += String.fromCharCode(value);
         }
 
-        while ( size > 0 ) {
-
+        while (size > 0) {
             this.getUint8();
             size--;
-
         }
 
         return str;
+    }
 
-    },
+    public getSjisStringsAsUnicode(size: number): string {
+        const a: number[] = [];
 
-    getSjisStringsAsUnicode: function ( size ) {
-
-        const a = [];
-
-        while ( size > 0 ) {
-
+        while (size > 0) {
             const value = this.getUint8();
             size--;
 
-            if ( value === 0 ) {
+            if (value === 0) break;
 
-                break;
-
-            }
-
-            a.push( value );
-
+            a.push(value);
         }
 
-        while ( size > 0 ) {
-
+        while (size > 0) {
             this.getUint8();
             size--;
-
         }
 
-        return this.encoder.s2u( new Uint8Array( a ) );
+        return CharsetEncoder.s2u(new Uint8Array(a));
+    }
 
-    },
-
-    getUnicodeStrings: function ( size ) {
-
+    public getUnicodeStrings(size: number): string {
         let str = "";
 
-        while ( size > 0 ) {
+        while (size > 0) {
 
             const value = this.getUint16();
             size -= 2;
 
-            if ( value === 0 ) {
+            if (value === 0) break;
 
-                break;
-
-            }
-
-            str += String.fromCharCode( value );
-
+            str += String.fromCharCode(value);
         }
 
-        while ( size > 0 ) {
-
+        while (size > 0) {
             this.getUint8();
             size--;
-
         }
 
         return str;
-
-    },
-
-    getTextBuffer: function () {
-
-        const size = this.getUint32();
-        return this.getUnicodeStrings( size );
-
     }
 
-};
-
-export { DataViewEx };
+    public getTextBuffer(): string {
+        const size = this.getUint32();
+        return this.getUnicodeStrings(size);
+    }
+}
