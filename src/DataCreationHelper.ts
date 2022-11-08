@@ -1,6 +1,8 @@
 import type { Quaternion, Vector3 } from "./Math";
 
 export class DataCreationHelper {
+    private constructor() { }
+
     public static leftToRightVector3(v: Vector3): void {
         v[ 2 ] = -v[ 2 ];
     }

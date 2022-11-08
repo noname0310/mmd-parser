@@ -2,6 +2,8 @@
  * Simple CharsetEncoder for Shift_JIS
  */
 export class CharsetEncoder {
+    private constructor() { }
+
     /**
      * Converts from Shift_JIS Uint8Array data to Unicode strings.
      * @param uint8Array Shift_JIS Uint8Array data.
