@@ -2,7 +2,7 @@
  * Simple CharsetEncoder for Shift_JIS
  */
 export class CharsetEncoder {
-    private constructor() { }
+    private constructor() { /* static class */ }
 
     /**
      * Converts from Shift_JIS Uint8Array data to Unicode strings.
