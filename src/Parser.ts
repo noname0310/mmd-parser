@@ -162,6 +162,209 @@ export type PmdConstraintInfo = {
     springRotation: Vector3;
 };
 
+export type Pmx = {
+    metadata: PmxMetadata;
+    vertices: PmxVertexInfo[];
+    faces: PmxFaceInfo[];
+    textures: string[];
+    materials: PmxMaterialInfo[];
+    bones: PmxBoneInfo[];
+    morphs: PmxMorphInfo[];
+    frames: PmxFrameInfo[];
+    rigidBodies: PmxRigidBodyInfo[];
+    constraints: PmxConstraintInfo[];
+};
+
+export type PmxMetadata = {
+    format: "pmx";
+    coordinateSystem: CorrdinateSystem;
+    magic: string;
+    version: number;
+    headerSize: number;
+    encoding: number;
+    additionalUvNum: number;
+    vertexIndexSize: number;
+    textureIndexSize: number;
+    materialIndexSize: number;
+    boneIndexSize: number;
+    morphIndexSize: number;
+    rigidBodyIndexSize: number;
+    modelName: string;
+    englishModelName: string;
+    comment: string;
+    englishComment: string;
+    vertexCount: number;
+    faceCount: number;
+    materialCount: number;
+    boneCount: number;
+    morphCount: number;
+    frameCount: number;
+    rigidBodyCount: number;
+    constraintCount: number;
+};
+
+export type PmxVertexInfo = {
+    position: Vector3;
+    normal: Vector3;
+    uv: Vector2;
+    auvs: [number, number, number, number];
+    type: number;
+    skinIndices: number[];
+    skinWeights: number[];
+    skinC?: Vector3;
+    skinR0?: Vector3;
+    skinR1?: Vector3;
+    edgeRatio: number;
+};
+
+export type PmxFaceInfo = {
+    indices: [number, number, number];
+};
+
+export type PmxMaterialInfo = {
+    name: string;
+    englishName: string;
+    diffuse: [number, number, number, number];
+    specular: Vector3;
+    shininess: number;
+    ambient: Vector3;
+    flag: number;
+    edgeColor: [number, number, number, number];
+    edgeSize: number;
+    textureIndex: number;
+    envTextureIndex: number;
+    envFlag: number;
+    toonFlag: number;
+    comment: string;
+    faceCount: number;
+};
+
+export type PmxBoneInfo = {
+    name: string;
+    englishName: string;
+    position: Vector3;
+    parentIndex: number;
+    transformationClass: number;
+    flag: number;
+    connectIndex?: number;
+    offsetPosition?: Vector3;
+    grant?: {
+        isLocal: boolean;
+        affectRotation: boolean;
+        affectPosition: boolean;
+        parentIndex: number;
+        ratio: number;
+    };
+    fixAxis?: Vector3;
+    localXVector?: Vector3;
+    localZVector?: Vector3;
+    key?: number;
+    ik?: {
+        effector: number;
+        target: any;
+        iteration: number;
+        maxAngle: number;
+        linkCount: number;
+        links: {
+            index: number;
+            angleLimitation: number;
+            lowerLimitationAngle?: Vector3;
+            upperLimitationAngle?: Vector3;
+        }[];
+    }
+};
+
+export type GroupMorph = {
+    index: number;
+    ratio: number;
+};
+
+export type VertexMorph = {
+    index: number;
+    position: Vector3;
+};
+
+export type BoneMorph = {
+    index: number;
+    position: Vector3;
+    rotation: Quaternion;
+};
+
+export type UvMorph = {
+    index: number;
+    uv: [number, number, number, number];
+};
+
+export type MaterialMorph = {
+    index: number;
+    type: number;
+    diffuse: [number, number, number, number];
+    specular: Vector3;
+    shininess: number;
+    ambient: Vector3;
+    edgeColor: [number, number, number, number];
+    edgeSize: number;
+    textureColor: [number, number, number, number];
+    sphereTextureColor: [number, number, number, number];
+    toonColor: [number, number, number, number];
+};
+
+export type PmxMorphInfo = {
+    name: string;
+    englishName: string;
+    panel: number;
+    type: number;
+    elementCount: number;
+    elements: GroupMorph[] | VertexMorph[] | BoneMorph[] | UvMorph[] | MaterialMorph[];
+};
+
+export type PmxFrameInfo = {
+    name: string;
+    englishName: string;
+    type: number;
+    elementCount: number;
+    elements: {
+        target: number;
+        index: number;
+    }[];
+};
+
+export type PmxRigidBodyInfo = {
+    name: string;
+    englishName: string;
+    boneIndex: number;
+    groupIndex: number;
+    groupTarget: number;
+    shapeType: number;
+    width: number;
+    height: number;
+    depth: number;
+    position: Vector3;
+    rotation: Vector3;
+    weight: number;
+    positionDamping: number;
+    rotationDamping: number;
+    restitution: number;
+    friction: number;
+    type: number;
+};
+
+export type PmxConstraintInfo = {
+    name: string;
+    englishName: string;
+    type: number;
+    rigidBodyIndex1: number;
+    rigidBodyIndex2: number;
+    position: Vector3;
+    rotation: Vector3;
+    translationLimitation1: Vector3;
+    translationLimitation2: Vector3;
+    rotationLimitation1: Vector3;
+    rotationLimitation2: Vector3;
+    springPosition: Vector3;
+    springRotation: Vector3;
+};
+
 export class Parser {
     public static parsePmd(buffer: ArrayBufferLike, leftToRight: boolean): Pmd {
         const pmd: Partial<Pmd> = { };
@@ -171,6 +374,8 @@ export class Parser {
             format: "pmd",
             coordinateSystem: "left"
         };
+
+        pmd.metadata = metadata as PmdMetadata;
 
         // parseHeader
         {
@@ -341,7 +546,7 @@ export class Parser {
                 const p: Partial<PmdMorphFrameInfo> = { };
                 p.index = dv.getUint16();
                 return p as PmdMorphFrameInfo;
-            };
+            }
 
             metadata.morphFrameCount = dv.getUint8();
 
@@ -475,8 +680,8 @@ export class Parser {
                 p.width = dv.getFloat32();
                 p.height = dv.getFloat32();
                 p.depth = dv.getFloat32();
-                p.position = dv.getFloat32Array(3);
-                p.rotation = dv.getFloat32Array(3);
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.rotation = dv.getFloat32Array(3) as Vector3;
                 p.weight = dv.getFloat32();
                 p.positionDamping = dv.getFloat32();
                 p.rotationDamping = dv.getFloat32();
@@ -527,9 +732,8 @@ export class Parser {
         return pmd as Pmd;
     }
 
-    public static parsePmx = function (buffer, leftToRight) {
-
-        const pmx = { };
+    public static parsePmx(buffer: ArrayBufferLike, leftToRight: boolean): Pmx {
+        const pmx: Partial<Pmx> = { };
         const dv = new DataViewEx(buffer);
 
         pmx.metadata = { };
@@ -1074,9 +1278,9 @@ export class Parser {
 
         return pmx;
 
-    };
+    }
 
-    public static parseVmd = function (buffer, leftToRight) {
+    public static parseVmd(buffer, leftToRight) {
 
         const vmd = { };
         const dv = new DataViewEx(buffer);
@@ -1188,9 +1392,9 @@ export class Parser {
 
         return vmd;
 
-    };
+    }
 
-    public static parseVpd = function (text, leftToRight) {
+    public static parseVpd(text, leftToRight) {
 
         const vpd = { };
 
@@ -1351,9 +1555,9 @@ export class Parser {
 
         return vpd;
 
-    };
+    }
 
-    public static mergeVmds = function (vmds) {
+    public static mergeVmds(vmds) {
 
         const v = { };
         v.metadata = { };
@@ -1396,7 +1600,7 @@ export class Parser {
 
         return v;
 
-    };
+    }
 
     public static leftToRightModel(model: Pmd): void {
         if (model.metadata.coordinateSystem === "right") {
@@ -1446,7 +1650,7 @@ export class Parser {
         }
     }
 
-    public static leftToRightVmd = function (vmd) {
+    public static leftToRightVmd(vmd) {
         if (vmd.metadata.coordinateSystem === "right") {
             return;
         }
@@ -1462,9 +1666,9 @@ export class Parser {
             DataCreationHelper.leftToRightVector3(vmd.cameras[i].position);
             DataCreationHelper.leftToRightEuler(vmd.cameras[i].rotation);
         }
-    };
+    }
 
-    public static leftToRightVpd = function (vpd) {
+    public static leftToRightVpd(vpd) {
 
         if (vpd.metadata.coordinateSystem === "right") {
 
@@ -1483,5 +1687,5 @@ export class Parser {
 
         }
 
-    };
+    }
 }
