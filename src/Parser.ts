@@ -1,5 +1,6 @@
 import { DataCreationHelper } from "./DataCreationHelper";
-import { DataViewEx, IndexType } from "./DataViewEx";
+import type { IndexType } from "./DataViewEx";
+import { DataViewEx } from "./DataViewEx";
 import type { Quaternion, Vector2, Vector3 } from "./Math";
 
 export type ModelFormat = "pmd" | "pmx";
@@ -365,6 +366,115 @@ export type PmxConstraintInfo = {
     rotationLimitation2: Vector3;
     springPosition: Vector3;
     springRotation: Vector3;
+};
+
+export type Vmd = {
+    metadata: {
+        coordinateSystem: CorrdinateSystem;
+        magic: string;
+        name: string;
+        motionCount: number;
+        morphCount: number;
+        cameraCount: number;
+    };
+    motions: {
+        boneName: string;
+        frameNum: number;
+        position: [number, number, number];
+        rotation: [number, number, number, number];
+        interpolation: [
+            //https://hariganep.seesaa.net/article/201103article_1.html
+            /*
+            The interpolation parameters are four Bezier curves (0,0), (x1,y1), (x2,y2), and (127,127).
+            It represents the parameters of each axis.
+            X-axis interpolation parameters (X_x1, X_y1), (X_x2, X_y2)
+            Y-axis interpolation parameters (Y_x1, Y_y1), (Y_x2, Y_y2)
+            Z-axis interpolation parameters (Z_x1, Z_y1), (Z_x2, Z_y2)
+            Rotation interpolation parameters (R_x1, R_y1), (R_x2, R_y2)
+            Then, the interpolation parameters are as follows.
+            X_x1,Y_x1,Z_x1,R_x1,
+            X_y1,Y_y1,Z_y1,R_y1,
+            X_x2,Y_x2,Z_x2,R_x2,
+            X_y2,Y_y2,Z_y2,R_y2,
+
+            Y_x1,Z_x1,R_x1,X_y1,
+            Y_y1,Z_y1,R_y1,X_x2,
+            Y_x2,Z_x2,R_x2,X_y2,
+            Y_y2,Z_y2,R_y2, 01,
+            
+            Z_x1,R_x1,X_y1,Y_y1,
+            Z_y1,R_y1,X_x2,Y_x2,
+            Z_x2,R_x2,X_y2,Y_y2,
+            Z_y2,R_y2, 01, 00,
+            R_x1,X_y1,Y_y1,Z_y1,
+            R_y1,X_x2,Y_x2,Z_x2,
+            R_x2,X_y2,Y_y2,Z_y2,
+            R_y2, 01, 00, 00
+            */
+            //[4][4][4]
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number,
+            number, number, number, number
+        ];
+    }[];
+    morphs: {
+        morphName: string;
+        frameNum: number;
+        weight: number;
+    }[];
+    cameras: {
+        frameNum: number;
+        distance: number;
+        position: [number, number, number];
+        rotation: [number, number, number];
+        interpolation: [
+            //range: 0..127
+            //default linear interpolation is 20, 107, 20, 107
+            //x_ax, x_bx, x_ay, x_by
+            number, number, number, number,
+            //y_ax, y_bx, y_ay, y_by
+            number, number, number, number,
+            //z_ax, z_bx, z_ay, z_by
+            number, number, number, number,
+            //rot_ax, rot_bx, rot_ay, rot_by
+            number, number, number, number,
+            //distance_ax, distance_bx, distance_ay, distance_by
+            number, number, number, number,
+            //angle_ax, angle_bx, angle_ay, angle_by
+            number, number, number, number
+        ]
+        fov: number;
+        perspective: number;
+    }[];
+};
+
+export type Vpd = {
+    metadata: {
+        coordinateSystem: CorrdinateSystem;
+        parentFile: string;
+        boneCount: number;
+    };
+    bones: {
+        name: string;
+        translation: [number, number, number];
+        quaternion: [number, number, number, number];
+    }[];
 };
 
 export class Parser {
@@ -1148,8 +1258,7 @@ export class Parser {
         return pmx as Pmx;
     }
 
-    public static parseVmd(buffer, leftToRight) {
-
+    public static parseVmd(buffer: ArrayBufferLike, leftToRight: boolean): Vmd {
         const vmd = { };
         const dv = new DataViewEx(buffer);
 
@@ -1157,18 +1266,14 @@ export class Parser {
         vmd.metadata.coordinateSystem = "left";
 
         const parseHeader = function () {
-
             const metadata = vmd.metadata;
             metadata.magic = dv.getChars(30);
 
             if (metadata.magic !== "Vocaloid Motion Data 0002") {
-
                 throw "VMD file magic is not Vocaloid Motion Data 0002, but " + metadata.magic;
-
             }
 
             metadata.name = dv.getSjisStringsAsUnicode(20);
-
         };
 
         const parseMotions = function () {
@@ -1262,8 +1367,7 @@ export class Parser {
 
     }
 
-    public static parseVpd(text, leftToRight) {
-
+    public static parseVpd(text: string, leftToRight: boolean): Vpd {
         const vpd = { };
 
         vpd.metadata = { };
@@ -1321,7 +1425,7 @@ export class Parser {
 
                 const line = lines[i];
 
-                var result;
+                let result;
 
                 result = line.match(boneHeaderPattern);
 
@@ -1419,14 +1523,10 @@ export class Parser {
 
         if (leftToRight === true) this.leftToRightVpd(vpd);
 
-        // console.log( vpd );  // for console debug
-
         return vpd;
-
     }
 
-    public static mergeVmds(vmds) {
-
+    public static mergeVmds(vmds: Vmd[]) {
         const v = { };
         v.metadata = { };
         v.metadata.name = vmds[0].metadata.name;
@@ -1439,35 +1539,26 @@ export class Parser {
         v.cameras = [];
 
         for (let i = 0; i < vmds.length; i++) {
-
             const v2 = vmds[i];
 
             v.metadata.motionCount += v2.metadata.motionCount;
             v.metadata.morphCount += v2.metadata.morphCount;
             v.metadata.cameraCount += v2.metadata.cameraCount;
 
-            for (var j = 0; j < v2.metadata.motionCount; j++) {
-
+            for (let j = 0; j < v2.metadata.motionCount; j++) {
                 v.motions.push(v2.motions[j]);
-
             }
 
-            for (var j = 0; j < v2.metadata.morphCount; j++) {
-
+            for (let j = 0; j < v2.metadata.morphCount; j++) {
                 v.morphs.push(v2.morphs[j]);
-
             }
 
-            for (var j = 0; j < v2.metadata.cameraCount; j++) {
-
+            for (let j = 0; j < v2.metadata.cameraCount; j++) {
                 v.cameras.push(v2.cameras[j]);
-
             }
-
         }
 
         return v;
-
     }
 
     public static leftToRightModel(model: Pmd | Pmx): void {
@@ -1477,21 +1568,21 @@ export class Parser {
 
         model.metadata.coordinateSystem = "right";
 
-        for (var i = 0; i < model.metadata.vertexCount; i++) {
+        for (let i = 0; i < model.metadata.vertexCount; i++) {
             DataCreationHelper.leftToRightVector3(model.vertices[i].position);
             DataCreationHelper.leftToRightVector3(model.vertices[i].normal);
         }
 
-        for (var i = 0; i < model.metadata.faceCount; i++) {
+        for (let i = 0; i < model.metadata.faceCount; i++) {
             DataCreationHelper.leftToRightIndexOrder(model.faces[i].indices);
         }
 
-        for (var i = 0; i < model.metadata.boneCount; i++) {
+        for (let i = 0; i < model.metadata.boneCount; i++) {
             DataCreationHelper.leftToRightVector3(model.bones[i].position);
         }
 
         // TODO: support other morph for PMX
-        for (var i = 0; i < model.metadata.morphCount; i++) {
+        for (let i = 0; i < model.metadata.morphCount; i++) {
             const m = model.morphs[i];
 
             if (model.metadata.format === "pmx" && m.type !== 1) {
@@ -1505,12 +1596,12 @@ export class Parser {
             }
         }
 
-        for (var i = 0; i < model.metadata.rigidBodyCount; i++) {
+        for (let i = 0; i < model.metadata.rigidBodyCount; i++) {
             DataCreationHelper.leftToRightVector3(model.rigidBodies[i].position);
             DataCreationHelper.leftToRightEuler(model.rigidBodies[i].rotation);
         }
 
-        for (var i = 0; i < model.metadata.constraintCount; i++) {
+        for (let i = 0; i < model.metadata.constraintCount; i++) {
             DataCreationHelper.leftToRightVector3(model.constraints[i].position);
             DataCreationHelper.leftToRightEuler(model.constraints[i].rotation);
             DataCreationHelper.leftToRightVector3Range(model.constraints[i].translationLimitation1, model.constraints[i].translationLimitation2);
@@ -1518,25 +1609,25 @@ export class Parser {
         }
     }
 
-    public static leftToRightVmd(vmd) {
+    public static leftToRightVmd(vmd: Vmd): void {
         if (vmd.metadata.coordinateSystem === "right") {
             return;
         }
 
         vmd.metadata.coordinateSystem = "right";
 
-        for (var i = 0; i < vmd.metadata.motionCount; i++) {
+        for (let i = 0; i < vmd.metadata.motionCount; i++) {
             DataCreationHelper.leftToRightVector3(vmd.motions[i].position);
             DataCreationHelper.leftToRightQuaternion(vmd.motions[i].rotation);
         }
 
-        for (var i = 0; i < vmd.metadata.cameraCount; i++) {
+        for (let i = 0; i < vmd.metadata.cameraCount; i++) {
             DataCreationHelper.leftToRightVector3(vmd.cameras[i].position);
             DataCreationHelper.leftToRightEuler(vmd.cameras[i].rotation);
         }
     }
 
-    public static leftToRightVpd(vpd) {
+    public static leftToRightVpd(vpd: Vpd): void {
         if (vpd.metadata.coordinateSystem === "right") {
             return;
         }
