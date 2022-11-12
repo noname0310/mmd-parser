@@ -1,5 +1,5 @@
 import { DataCreationHelper } from "./DataCreationHelper";
-import { DataViewEx } from "./DataViewEx";
+import { DataViewEx, IndexType } from "./DataViewEx";
 import type { Quaternion, Vector2, Vector3 } from "./Math";
 
 export type ModelFormat = "pmd" | "pmx";
@@ -195,6 +195,7 @@ export type PmxMetadata = {
     englishComment: string;
     vertexCount: number;
     faceCount: number;
+    textureCount: number;
     materialCount: number;
     boneCount: number;
     morphCount: number;
@@ -235,6 +236,7 @@ export type PmxMaterialInfo = {
     envTextureIndex: number;
     envFlag: number;
     toonFlag: number;
+    toonIndex: number;
     comment: string;
     faceCount: number;
 };
@@ -315,7 +317,7 @@ export type PmxMorphInfo = {
     panel: number;
     type: number;
     elementCount: number;
-    elements: GroupMorph[] | VertexMorph[] | BoneMorph[] | UvMorph[] | MaterialMorph[];
+    elements: (GroupMorph | VertexMorph | BoneMorph | UvMorph | MaterialMorph)[];
 };
 
 export type PmxFrameInfo = {
@@ -736,28 +738,26 @@ export class Parser {
         const pmx: Partial<Pmx> = { };
         const dv = new DataViewEx(buffer);
 
-        pmx.metadata = { };
-        pmx.metadata.format = "pmx";
-        pmx.metadata.coordinateSystem = "left";
+        const metadata: Partial<PmxMetadata> = {
+            format: "pmx",
+            coordinateSystem: "left"
+        };
 
-        const parseHeader = function () {
+        pmx.metadata = metadata as PmxMetadata;
 
-            const metadata = pmx.metadata;
+        // parseHeader
+        {
             metadata.magic = dv.getChars(4);
 
             // Note: don't remove the last blank space.
             if (metadata.magic !== "PMX ") {
-
                 throw "PMX file magic is not PMX , but " + metadata.magic;
-
             }
 
             metadata.version = dv.getFloat32();
 
             if (metadata.version !== 2.0 && metadata.version !== 2.1) {
-
                 throw "PMX version " + metadata.version + " is not supported.";
-
             }
 
             metadata.headerSize = dv.getUint8();
@@ -773,244 +773,178 @@ export class Parser {
             metadata.englishModelName = dv.getTextBuffer();
             metadata.comment = dv.getTextBuffer();
             metadata.englishComment = dv.getTextBuffer();
+        }
 
-        };
+        // parseVertices
+        {
+            function parseVertex(): PmxVertexInfo {
+                const p: Partial<PmxVertexInfo> = { };
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.normal = dv.getFloat32Array(3) as Vector3;
+                p.uv = dv.getFloat32Array(2) as Vector2;
 
-        const parseVertices = function () {
+                const auvs = [];
 
-            const parseVertex = function () {
-
-                const p = { };
-                p.position = dv.getFloat32Array(3);
-                p.normal = dv.getFloat32Array(3);
-                p.uv = dv.getFloat32Array(2);
-
-                p.auvs = [];
-
-                for (let i = 0; i < pmx.metadata.additionalUvNum; i++) {
-
-                    p.auvs.push(dv.getFloat32Array(4));
-
+                for (let i = 0; i < metadata.additionalUvNum!; i++) {
+                    auvs.push(dv.getFloat32Array(4));
                 }
 
                 p.type = dv.getUint8();
 
-                const indexSize = metadata.boneIndexSize;
+                const indexSize = metadata.boneIndexSize! as IndexType;
 
                 if (p.type === 0) {  // BDEF1
-
-                    p.skinIndices = dv.getIndexArray(indexSize, 1);
+                    p.skinIndices = dv.getIndexArray(indexSize, 1, false);
                     p.skinWeights = [1.0];
-
                 } else if (p.type === 1) {  // BDEF2
-
-                    p.skinIndices = dv.getIndexArray(indexSize, 2);
+                    p.skinIndices = dv.getIndexArray(indexSize, 2, false);
                     p.skinWeights = dv.getFloat32Array(1);
                     p.skinWeights.push(1.0 - p.skinWeights[0]);
-
                 } else if (p.type === 2) {  // BDEF4
-
-                    p.skinIndices = dv.getIndexArray(indexSize, 4);
+                    p.skinIndices = dv.getIndexArray(indexSize, 4, false);
                     p.skinWeights = dv.getFloat32Array(4);
-
                 } else if (p.type === 3) {  // SDEF
-
-                    p.skinIndices = dv.getIndexArray(indexSize, 2);
+                    p.skinIndices = dv.getIndexArray(indexSize, 2, false);
                     p.skinWeights = dv.getFloat32Array(1);
                     p.skinWeights.push(1.0 - p.skinWeights[0]);
 
-                    p.skinC = dv.getFloat32Array(3);
-                    p.skinR0 = dv.getFloat32Array(3);
-                    p.skinR1 = dv.getFloat32Array(3);
+                    p.skinC = dv.getFloat32Array(3) as Vector3;
+                    p.skinR0 = dv.getFloat32Array(3) as Vector3;
+                    p.skinR1 = dv.getFloat32Array(3) as Vector3;
 
                     // SDEF is not supported yet and is handled as BDEF2 so far.
                     // TODO: SDEF support
                     p.type = 1;
-
                 } else {
-
                     throw "unsupport bone type " + p.type + " exception.";
-
                 }
 
                 p.edgeRatio = dv.getFloat32();
-                return p;
+                return p as PmxVertexInfo;
+            }
 
-            };
-
-            var metadata = pmx.metadata;
             metadata.vertexCount = dv.getUint32();
-
             pmx.vertices = [];
 
             for (let i = 0; i < metadata.vertexCount; i++) {
-
                 pmx.vertices.push(parseVertex());
-
             }
+        }
 
-        };
-
-        const parseFaces = function () {
-
-            const parseFace = function () {
-
-                const p = { };
-                p.indices = dv.getIndexArray(metadata.vertexIndexSize, 3, true);
-                return p;
-
-            };
-
-            var metadata = pmx.metadata;
+        // parseFaces
+        {
+            function parseFace(): PmxFaceInfo {
+                const p: Partial<PmxFaceInfo> = { };
+                p.indices = dv.getIndexArray(metadata.vertexIndexSize! as IndexType, 3, true) as Vector3;
+                return p as PmxFaceInfo;
+            }
+            
             metadata.faceCount = dv.getUint32() / 3;
-
             pmx.faces = [];
 
             for (let i = 0; i < metadata.faceCount; i++) {
-
                 pmx.faces.push(parseFace());
+            }
+        }
 
+        // parseTextures
+        {
+            function parseTexture(): string {
+                return dv.getTextBuffer();
             }
 
-        };
-
-        const parseTextures = function () {
-
-            const parseTexture = function () {
-
-                return dv.getTextBuffer();
-
-            };
-
-            const metadata = pmx.metadata;
             metadata.textureCount = dv.getUint32();
 
             pmx.textures = [];
 
             for (let i = 0; i < metadata.textureCount; i++) {
-
                 pmx.textures.push(parseTexture());
-
             }
+        }
 
-        };
-
-        const parseMaterials = function () {
-
-            const parseMaterial = function () {
-
-                const p = { };
+        // parseMaterials
+        {
+            function parseMaterial(): PmxMaterialInfo {
+                const p: Partial<PmxMaterialInfo> = { };
                 p.name = dv.getTextBuffer();
                 p.englishName = dv.getTextBuffer();
-                p.diffuse = dv.getFloat32Array(4);
-                p.specular = dv.getFloat32Array(3);
+                p.diffuse = dv.getFloat32Array(4) as [number, number, number, number];
+                p.specular = dv.getFloat32Array(3) as Vector3;
                 p.shininess = dv.getFloat32();
-                p.ambient = dv.getFloat32Array(3);
+                p.ambient = dv.getFloat32Array(3) as Vector3;
                 p.flag = dv.getUint8();
-                p.edgeColor = dv.getFloat32Array(4);
+                p.edgeColor = dv.getFloat32Array(4) as [number, number, number, number];
                 p.edgeSize = dv.getFloat32();
-                p.textureIndex = dv.getIndex(pmx.metadata.textureIndexSize);
-                p.envTextureIndex = dv.getIndex(pmx.metadata.textureIndexSize);
+                p.textureIndex = dv.getIndex(metadata.textureIndexSize! as IndexType, false);
+                p.envTextureIndex = dv.getIndex(metadata.textureIndexSize! as IndexType, false);
                 p.envFlag = dv.getUint8();
                 p.toonFlag = dv.getUint8();
 
                 if (p.toonFlag === 0) {
-
-                    p.toonIndex = dv.getIndex(pmx.metadata.textureIndexSize);
-
+                    p.toonIndex = dv.getIndex(metadata.textureIndexSize! as IndexType, false);
                 } else if (p.toonFlag === 1) {
-
                     p.toonIndex = dv.getInt8();
-
                 } else {
-
                     throw "unknown toon flag " + p.toonFlag + " exception.";
-
                 }
 
                 p.comment = dv.getTextBuffer();
                 p.faceCount = dv.getUint32() / 3;
-                return p;
+                return p as PmxMaterialInfo;
+            }
 
-            };
-
-            const metadata = pmx.metadata;
             metadata.materialCount = dv.getUint32();
-
             pmx.materials = [];
 
             for (let i = 0; i < metadata.materialCount; i++) {
-
                 pmx.materials.push(parseMaterial());
-
             }
+        }
 
-        };
-
-        const parseBones = function () {
-
-            const parseBone = function () {
-
-                const p = { };
+        // parseBones
+        {
+            function parseBone(): PmxBoneInfo {
+                const p: Partial<PmxBoneInfo> = { };
                 p.name = dv.getTextBuffer();
                 p.englishName = dv.getTextBuffer();
-                p.position = dv.getFloat32Array(3);
-                p.parentIndex = dv.getIndex(pmx.metadata.boneIndexSize);
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.parentIndex = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
                 p.transformationClass = dv.getUint32();
                 p.flag = dv.getUint16();
 
                 if (p.flag & 0x1) {
-
-                    p.connectIndex = dv.getIndex(pmx.metadata.boneIndexSize);
-
+                    p.connectIndex = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
                 } else {
-
-                    p.offsetPosition = dv.getFloat32Array(3);
-
+                    p.offsetPosition = dv.getFloat32Array(3) as Vector3;
                 }
 
                 if (p.flag & 0x100 || p.flag & 0x200) {
-
-                    // Note: I don't think Grant is an appropriate name
-                    //       but I found that some English translated MMD tools use this term
-                    //       so I've named it Grant so far.
-                    //       I'd rename to more appropriate name from Grant later.
-                    const grant = { };
-
+                    const grant: Partial<PmxBoneInfo["grant"]> = { };
                     grant.isLocal = (p.flag & 0x80) !== 0 ? true : false;
                     grant.affectRotation = (p.flag & 0x100) !== 0 ? true : false;
                     grant.affectPosition = (p.flag & 0x200) !== 0 ? true : false;
-                    grant.parentIndex = dv.getIndex(pmx.metadata.boneIndexSize);
+                    grant.parentIndex = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
                     grant.ratio = dv.getFloat32();
 
-                    p.grant = grant;
-
+                    p.grant = grant as PmxBoneInfo["grant"];
                 }
 
                 if (p.flag & 0x400) {
-
-                    p.fixAxis = dv.getFloat32Array(3);
-
+                    p.fixAxis = dv.getFloat32Array(3) as Vector3;
                 }
 
                 if (p.flag & 0x800) {
-
-                    p.localXVector = dv.getFloat32Array(3);
-                    p.localZVector = dv.getFloat32Array(3);
-
+                    p.localXVector = dv.getFloat32Array(3) as Vector3;
+                    p.localZVector = dv.getFloat32Array(3) as Vector3;
                 }
 
                 if (p.flag & 0x2000) {
-
                     p.key = dv.getUint32();
-
                 }
 
                 if (p.flag & 0x20) {
-
-                    const ik = { };
-
-                    ik.effector = dv.getIndex(pmx.metadata.boneIndexSize);
+                    const ik: Partial<PmxBoneInfo["ik"]> = { };
+                    ik.effector = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
                     ik.target = null;
                     ik.iteration = dv.getUint32();
                     ik.maxAngle = dv.getFloat32();
@@ -1018,47 +952,36 @@ export class Parser {
                     ik.links = [];
 
                     for (let i = 0; i < ik.linkCount; i++) {
-
-                        const link = { };
-                        link.index = dv.getIndex(pmx.metadata.boneIndexSize);
+                        const link: Partial<typeof ik.links[number]> = { };
+                        link.index = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
                         link.angleLimitation = dv.getUint8();
 
                         if (link.angleLimitation === 1) {
-
-                            link.lowerLimitationAngle = dv.getFloat32Array(3);
-                            link.upperLimitationAngle = dv.getFloat32Array(3);
-
+                            link.lowerLimitationAngle = dv.getFloat32Array(3) as Vector3;
+                            link.upperLimitationAngle = dv.getFloat32Array(3) as Vector3;
                         }
 
-                        ik.links.push(link);
-
+                        ik.links.push(link as typeof ik.links[number]);
                     }
-
-                    p.ik = ik;
+                    p.ik = ik as PmxBoneInfo["ik"];
                 }
 
-                return p;
+                return p as PmxBoneInfo;
+            }
 
-            };
-
-            const metadata = pmx.metadata;
             metadata.boneCount = dv.getUint32();
 
             pmx.bones = [];
 
             for (let i = 0; i < metadata.boneCount; i++) {
-
                 pmx.bones.push(parseBone());
-
             }
+        }
 
-        };
-
-        const parseMorphs = function () {
-
-            const parseMorph = function () {
-
-                const p = { };
+        // parseMorphs
+        {
+            function parseMorph(): PmxMorphInfo {
+                const p: Partial<PmxMorphInfo> = { };
                 p.name = dv.getTextBuffer();
                 p.englishName = dv.getTextBuffer();
                 p.panel = dv.getUint8();
@@ -1067,75 +990,55 @@ export class Parser {
                 p.elements = [];
 
                 for (let i = 0; i < p.elementCount; i++) {
-
                     if (p.type === 0) {  // group morph
-
-                        var m = { };
-                        m.index = dv.getIndex(pmx.metadata.morphIndexSize);
+                        const m: Partial<GroupMorph> = { };
+                        m.index = dv.getIndex(metadata.morphIndexSize! as IndexType, false);
                         m.ratio = dv.getFloat32();
-                        p.elements.push(m);
-
+                        p.elements.push(m as GroupMorph);
                     } else if (p.type === 1) {  // vertex morph
-
-                        var m = { };
-                        m.index = dv.getIndex(pmx.metadata.vertexIndexSize, true);
-                        m.position = dv.getFloat32Array(3);
-                        p.elements.push(m);
+                        const m: Partial<VertexMorph> = { };
+                        m.index = dv.getIndex(metadata.vertexIndexSize! as IndexType, true);
+                        m.position = dv.getFloat32Array(3) as Vector3;
+                        p.elements.push(m as VertexMorph);
 
                     } else if (p.type === 2) {  // bone morph
-
-                        var m = { };
-                        m.index = dv.getIndex(pmx.metadata.boneIndexSize);
-                        m.position = dv.getFloat32Array(3);
-                        m.rotation = dv.getFloat32Array(4);
-                        p.elements.push(m);
+                        const m: Partial<BoneMorph> = { };
+                        m.index = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
+                        m.position = dv.getFloat32Array(3) as Vector3;
+                        m.rotation = dv.getFloat32Array(4) as Quaternion;
+                        p.elements.push(m as BoneMorph);
 
                     } else if (p.type === 3) {  // uv morph
-
-                        var m = { };
-                        m.index = dv.getIndex(pmx.metadata.vertexIndexSize, true);
-                        m.uv = dv.getFloat32Array(4);
-                        p.elements.push(m);
-
+                        const m: Partial<UvMorph> = { };
+                        m.index = dv.getIndex(metadata.vertexIndexSize! as IndexType, true);
+                        m.uv = dv.getFloat32Array(4) as [number, number, number, number];
+                        p.elements.push(m as UvMorph);
                     } else if (p.type === 4) {  // additional uv1
-
                         // TODO: implement
-
                     } else if (p.type === 5) {  // additional uv2
-
                         // TODO: implement
-
                     } else if (p.type === 6) {  // additional uv3
-
                         // TODO: implement
-
                     } else if (p.type === 7) {  // additional uv4
-
                         // TODO: implement
-
                     } else if (p.type === 8) {  // material morph
-
-                        var m = { };
-                        m.index = dv.getIndex(pmx.metadata.materialIndexSize);
+                        const m: Partial<MaterialMorph> = { };
+                        m.index = dv.getIndex(metadata.materialIndexSize! as IndexType, false);
                         m.type = dv.getUint8();
-                        m.diffuse = dv.getFloat32Array(4);
-                        m.specular = dv.getFloat32Array(3);
+                        m.diffuse = dv.getFloat32Array(4) as [number, number, number, number];
+                        m.specular = dv.getFloat32Array(3) as Vector3;
                         m.shininess = dv.getFloat32();
-                        m.ambient = dv.getFloat32Array(3);
-                        m.edgeColor = dv.getFloat32Array(4);
+                        m.ambient = dv.getFloat32Array(3) as Vector3;
+                        m.edgeColor = dv.getFloat32Array(4) as [number, number, number, number];
                         m.edgeSize = dv.getFloat32();
-                        m.textureColor = dv.getFloat32Array(4);
-                        m.sphereTextureColor = dv.getFloat32Array(4);
-                        m.toonColor = dv.getFloat32Array(4);
-                        p.elements.push(m);
-
+                        m.textureColor = dv.getFloat32Array(4) as [number, number, number, number];
+                        m.sphereTextureColor = dv.getFloat32Array(4) as [number, number, number, number];
+                        m.toonColor = dv.getFloat32Array(4) as [number, number, number, number];
+                        p.elements.push(m as MaterialMorph);
                     }
-
                 }
-
-                return p;
-
-            };
+                return p as PmxMorphInfo;
+            }
 
             const metadata = pmx.metadata;
             metadata.morphCount = dv.getUint32();
@@ -1143,18 +1046,14 @@ export class Parser {
             pmx.morphs = [];
 
             for (let i = 0; i < metadata.morphCount; i++) {
-
                 pmx.morphs.push(parseMorph());
-
             }
+        }
 
-        };
-
-        const parseFrames = function () {
-
-            const parseFrame = function () {
-
-                const p = { };
+        // parseFrames
+        {
+            function parseFrame(): PmxFrameInfo {
+                const p: Partial<PmxFrameInfo> = { };
                 p.name = dv.getTextBuffer();
                 p.englishName = dv.getTextBuffer();
                 p.type = dv.getUint8();
@@ -1162,56 +1061,47 @@ export class Parser {
                 p.elements = [];
 
                 for (let i = 0; i < p.elementCount; i++) {
-
-                    const e = { };
+                    const e: Partial<PmxFrameInfo["elements"][number]> = { };
                     e.target = dv.getUint8();
-                    e.index = (e.target === 0) ? dv.getIndex(pmx.metadata.boneIndexSize) : dv.getIndex(pmx.metadata.morphIndexSize);
-                    p.elements.push(e);
-
+                    e.index = (e.target === 0) 
+                        ? dv.getIndex(metadata.boneIndexSize! as IndexType, false)
+                        : dv.getIndex(metadata.morphIndexSize! as IndexType, false);
+                    p.elements.push(e as PmxFrameInfo["elements"][number]);
                 }
+                return p as PmxFrameInfo;
+            }
 
-                return p;
-
-            };
-
-            const metadata = pmx.metadata;
             metadata.frameCount = dv.getUint32();
-
             pmx.frames = [];
 
             for (let i = 0; i < metadata.frameCount; i++) {
-
                 pmx.frames.push(parseFrame());
-
             }
+        }
 
-        };
-
-        const parseRigidBodies = function () {
-
-            const parseRigidBody = function () {
-
-                const p = { };
+        // parseRigidBodies
+        {
+            function parseRigidBody(): PmxRigidBodyInfo {
+                const p: Partial<PmxRigidBodyInfo> = { };
                 p.name = dv.getTextBuffer();
                 p.englishName = dv.getTextBuffer();
-                p.boneIndex = dv.getIndex(pmx.metadata.boneIndexSize);
+                p.boneIndex = dv.getIndex(metadata.boneIndexSize! as IndexType, false);
                 p.groupIndex = dv.getUint8();
                 p.groupTarget = dv.getUint16();
                 p.shapeType = dv.getUint8();
                 p.width = dv.getFloat32();
                 p.height = dv.getFloat32();
                 p.depth = dv.getFloat32();
-                p.position = dv.getFloat32Array(3);
-                p.rotation = dv.getFloat32Array(3);
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.rotation = dv.getFloat32Array(3) as Vector3;
                 p.weight = dv.getFloat32();
                 p.positionDamping = dv.getFloat32();
                 p.rotationDamping = dv.getFloat32();
                 p.restitution = dv.getFloat32();
                 p.friction = dv.getFloat32();
                 p.type = dv.getUint8();
-                return p;
-
-            };
+                return p as PmxRigidBodyInfo;
+            }
 
             const metadata = pmx.metadata;
             metadata.rigidBodyCount = dv.getUint32();
@@ -1219,34 +1109,29 @@ export class Parser {
             pmx.rigidBodies = [];
 
             for (let i = 0; i < metadata.rigidBodyCount; i++) {
-
                 pmx.rigidBodies.push(parseRigidBody());
-
             }
+        }
 
-        };
-
-        const parseConstraints = function () {
-
-            const parseConstraint = function () {
-
-                const p = { };
+        // parseConstraints
+        {
+            function parseConstraint(): PmxConstraintInfo {
+                const p: Partial<PmxConstraintInfo> = { };
                 p.name = dv.getTextBuffer();
                 p.englishName = dv.getTextBuffer();
                 p.type = dv.getUint8();
-                p.rigidBodyIndex1 = dv.getIndex(pmx.metadata.rigidBodyIndexSize);
-                p.rigidBodyIndex2 = dv.getIndex(pmx.metadata.rigidBodyIndexSize);
-                p.position = dv.getFloat32Array(3);
-                p.rotation = dv.getFloat32Array(3);
-                p.translationLimitation1 = dv.getFloat32Array(3);
-                p.translationLimitation2 = dv.getFloat32Array(3);
-                p.rotationLimitation1 = dv.getFloat32Array(3);
-                p.rotationLimitation2 = dv.getFloat32Array(3);
-                p.springPosition = dv.getFloat32Array(3);
-                p.springRotation = dv.getFloat32Array(3);
-                return p;
-
-            };
+                p.rigidBodyIndex1 = dv.getIndex(metadata.rigidBodyIndexSize! as IndexType, false);
+                p.rigidBodyIndex2 = dv.getIndex(metadata.rigidBodyIndexSize! as IndexType, false);
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.rotation = dv.getFloat32Array(3) as Vector3;
+                p.translationLimitation1 = dv.getFloat32Array(3) as Vector3;
+                p.translationLimitation2 = dv.getFloat32Array(3) as Vector3;
+                p.rotationLimitation1 = dv.getFloat32Array(3) as Vector3;
+                p.rotationLimitation2 = dv.getFloat32Array(3) as Vector3;
+                p.springPosition = dv.getFloat32Array(3) as Vector3;
+                p.springRotation = dv.getFloat32Array(3) as Vector3;
+                return p as PmxConstraintInfo;
+            }
 
             const metadata = pmx.metadata;
             metadata.constraintCount = dv.getUint32();
@@ -1254,30 +1139,13 @@ export class Parser {
             pmx.constraints = [];
 
             for (let i = 0; i < metadata.constraintCount; i++) {
-
                 pmx.constraints.push(parseConstraint());
-
             }
+        }
 
-        };
+        if (leftToRight === true) this.leftToRightModel(pmx as Pmx);
 
-        parseHeader();
-        parseVertices();
-        parseFaces();
-        parseTextures();
-        parseMaterials();
-        parseBones();
-        parseMorphs();
-        parseFrames();
-        parseRigidBodies();
-        parseConstraints();
-
-        if (leftToRight === true) this.leftToRightModel(pmx);
-
-        // console.log( pmx ); // for console debug
-
-        return pmx;
-
+        return pmx as Pmx;
     }
 
     public static parseVmd(buffer, leftToRight) {
@@ -1602,7 +1470,7 @@ export class Parser {
 
     }
 
-    public static leftToRightModel(model: Pmd): void {
+    public static leftToRightModel(model: Pmd | Pmx): void {
         if (model.metadata.coordinateSystem === "right") {
             return;
         }
@@ -1669,23 +1537,15 @@ export class Parser {
     }
 
     public static leftToRightVpd(vpd) {
-
         if (vpd.metadata.coordinateSystem === "right") {
-
             return;
-
         }
 
         vpd.metadata.coordinateSystem = "right";
 
-        const helper = new DataCreationHelper();
-
         for (let i = 0; i < vpd.bones.length; i++) {
-
-            helper.leftToRightVector3(vpd.bones[i].translation);
-            helper.leftToRightQuaternion(vpd.bones[i].quaternion);
-
+            DataCreationHelper.leftToRightVector3(vpd.bones[i].translation);
+            DataCreationHelper.leftToRightQuaternion(vpd.bones[i].quaternion);
         }
-
     }
 }
