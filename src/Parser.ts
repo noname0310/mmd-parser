@@ -7,6 +7,8 @@ export type ModelFormat = "pmd" | "pmx";
 
 export type CorrdinateSystem = "left" | "right";
 
+// #region Pmd
+
 export type Pmd = {
     metadata: PmdMetadata;
     vertices: PmdVertexInfo[];
@@ -162,6 +164,10 @@ export type PmdConstraintInfo = {
     springPosition: Vector3;
     springRotation: Vector3;
 };
+
+// #endregion
+
+// #region Pmx
 
 export type Pmx = {
     metadata: PmxMetadata;
@@ -367,6 +373,8 @@ export type PmxConstraintInfo = {
     springPosition: Vector3;
     springRotation: Vector3;
 };
+
+// #endregion
 
 export type Vmd = {
     metadata: {
@@ -1526,7 +1534,7 @@ export class Parser {
         return vpd;
     }
 
-    public static mergeVmds(vmds: Vmd[]) {
+    public static mergeVmds(vmds: Vmd[]): Vmd {
         const v = { };
         v.metadata = { };
         v.metadata.name = vmds[0].metadata.name;
