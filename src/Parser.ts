@@ -1603,7 +1603,10 @@ export class Parser {
             }
 
             for (let j = 0; j < m.elements.length; j++) {
-                DataCreationHelper.leftToRightVector3(m.elements[j].position);
+                const e = m.elements[j];
+                if ((e as { position?: Vector3 }).position !== undefined) {
+                    DataCreationHelper.leftToRightVector3((e as { position: Vector3 }).position);
+                }
             }
         }
 
