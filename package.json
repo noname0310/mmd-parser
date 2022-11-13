@@ -2,8 +2,10 @@
     "name": "mmd-parser",
     "version": "0.1.0",
     "description": "MMD parser",
+    "main": "dist/index.js",
     "scripts": {
         "start": "webpack serve --mode development",
+        "build": "tsc",
         "lint": "eslint --ext .ts,.tsx src test --fix --cache"
     },
     "repository": {
