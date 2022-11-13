@@ -538,7 +538,7 @@ export class Parser {
                 const uv = dv.getFloat32Array(2);
                 const skinIndices = dv.getUint16Array(2);
                 const skinWeights = [dv.getUint8() / 100];
-                skinWeights.push(1.0 - p.skinWeights[0]);
+                skinWeights.push(1.0 - skinWeights[0]);
                 const edgeFlag = dv.getUint8();
                 return {
                     position: position as Vector3,
