@@ -1707,6 +1707,10 @@ export class Parser {
             DataCreationHelper.leftToRightVector3(vmd.cameras[i].position);
             DataCreationHelper.leftToRightEuler(vmd.cameras[i].rotation);
         }
+
+        for (let i = 0; i < vmd.metadata.lightCount; i++) {
+            DataCreationHelper.leftToRightVector3(vmd.lights[i].direction); // TODO: check
+        }
     }
 
     public static leftToRightVpd(vpd: Vpd): void {
