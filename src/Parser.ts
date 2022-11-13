@@ -1532,38 +1532,44 @@ export class Parser {
     }
 
     public static mergeVmds(vmds: Vmd[]): Vmd {
-        const v = { };
-        v.metadata = { };
-        v.metadata.name = vmds[0].metadata.name;
-        v.metadata.coordinateSystem = vmds[0].metadata.coordinateSystem;
-        v.metadata.motionCount = 0;
-        v.metadata.morphCount = 0;
-        v.metadata.cameraCount = 0;
-        v.motions = [];
-        v.morphs = [];
-        v.cameras = [];
+        const metadata: VmdMetadata = {
+            coordinateSystem: vmds[0].metadata.coordinateSystem,
+            magic: vmds[0].metadata.magic,
+            name: vmds[0].metadata.name,
+            motionCount: 0,
+            morphCount: 0,
+            cameraCount: 0
+        };
+        const motions = [];
+        const morphs = [];
+        const cameras = [];
 
         for (let i = 0; i < vmds.length; i++) {
             const v2 = vmds[i];
 
-            v.metadata.motionCount += v2.metadata.motionCount;
-            v.metadata.morphCount += v2.metadata.morphCount;
-            v.metadata.cameraCount += v2.metadata.cameraCount;
+            metadata.motionCount += v2.metadata.motionCount;
+            metadata.morphCount += v2.metadata.morphCount;
+            metadata.cameraCount += v2.metadata.cameraCount;
 
             for (let j = 0; j < v2.metadata.motionCount; j++) {
-                v.motions.push(v2.motions[j]);
+                motions.push(v2.motions[j]);
             }
 
             for (let j = 0; j < v2.metadata.morphCount; j++) {
-                v.morphs.push(v2.morphs[j]);
+                morphs.push(v2.morphs[j]);
             }
 
             for (let j = 0; j < v2.metadata.cameraCount; j++) {
-                v.cameras.push(v2.cameras[j]);
+                cameras.push(v2.cameras[j]);
             }
         }
 
-        return v;
+        return {
+            metadata: metadata,
+            motions: motions,
+            morphs: morphs,
+            cameras: cameras
+        };
     }
 
     public static leftToRightModel(model: Pmd | Pmx): void {
