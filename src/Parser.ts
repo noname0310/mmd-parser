@@ -376,114 +376,134 @@ export type PmxConstraintInfo = {
 
 // #endregion
 
+// #region Vmd
+
 export type Vmd = {
-    metadata: {
-        coordinateSystem: CorrdinateSystem;
-        magic: string;
-        name: string;
-        motionCount: number;
-        morphCount: number;
-        cameraCount: number;
-    };
-    motions: {
-        boneName: string;
-        frameNum: number;
-        position: [number, number, number];
-        rotation: [number, number, number, number];
-        interpolation: [
-            //https://hariganep.seesaa.net/article/201103article_1.html
-            /*
-            The interpolation parameters are four Bezier curves (0,0), (x1,y1), (x2,y2), and (127,127).
-            It represents the parameters of each axis.
-            X-axis interpolation parameters (X_x1, X_y1), (X_x2, X_y2)
-            Y-axis interpolation parameters (Y_x1, Y_y1), (Y_x2, Y_y2)
-            Z-axis interpolation parameters (Z_x1, Z_y1), (Z_x2, Z_y2)
-            Rotation interpolation parameters (R_x1, R_y1), (R_x2, R_y2)
-            Then, the interpolation parameters are as follows.
-            X_x1,Y_x1,Z_x1,R_x1,
-            X_y1,Y_y1,Z_y1,R_y1,
-            X_x2,Y_x2,Z_x2,R_x2,
-            X_y2,Y_y2,Z_y2,R_y2,
-
-            Y_x1,Z_x1,R_x1,X_y1,
-            Y_y1,Z_y1,R_y1,X_x2,
-            Y_x2,Z_x2,R_x2,X_y2,
-            Y_y2,Z_y2,R_y2, 01,
-            
-            Z_x1,R_x1,X_y1,Y_y1,
-            Z_y1,R_y1,X_x2,Y_x2,
-            Z_x2,R_x2,X_y2,Y_y2,
-            Z_y2,R_y2, 01, 00,
-            R_x1,X_y1,Y_y1,Z_y1,
-            R_y1,X_x2,Y_x2,Z_x2,
-            R_x2,X_y2,Y_y2,Z_y2,
-            R_y2, 01, 00, 00
-            */
-            //[4][4][4]
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number,
-            number, number, number, number
-        ];
-    }[];
-    morphs: {
-        morphName: string;
-        frameNum: number;
-        weight: number;
-    }[];
-    cameras: {
-        frameNum: number;
-        distance: number;
-        position: [number, number, number];
-        rotation: [number, number, number];
-        interpolation: [
-            //range: 0..127
-            //default linear interpolation is 20, 107, 20, 107
-            //x_ax, x_bx, x_ay, x_by
-            number, number, number, number,
-            //y_ax, y_bx, y_ay, y_by
-            number, number, number, number,
-            //z_ax, z_bx, z_ay, z_by
-            number, number, number, number,
-            //rot_ax, rot_bx, rot_ay, rot_by
-            number, number, number, number,
-            //distance_ax, distance_bx, distance_ay, distance_by
-            number, number, number, number,
-            //angle_ax, angle_bx, angle_ay, angle_by
-            number, number, number, number
-        ]
-        fov: number;
-        perspective: number;
-    }[];
+    metadata: VmdMetadata;
+    motions: VmdMotionFrame[];
+    morphs: VmdMorphFrame[];
+    cameras: VmdCameraFrame[];
 };
+
+export type VmdMetadata = {
+    coordinateSystem: CorrdinateSystem;
+    magic: string;
+    name: string;
+    motionCount: number;
+    morphCount: number;
+    cameraCount: number;
+};
+
+export type VmdMotionFrame = {
+    boneName: string;
+    frameNum: number;
+    position: Vector3;
+    rotation: Quaternion;
+    interpolation: [
+        //https://hariganep.seesaa.net/article/201103article_1.html
+        /*
+        The interpolation parameters are four Bezier curves (0,0), (x1,y1), (x2,y2), and (127,127).
+        It represents the parameters of each axis.
+        X-axis interpolation parameters (X_x1, X_y1), (X_x2, X_y2)
+        Y-axis interpolation parameters (Y_x1, Y_y1), (Y_x2, Y_y2)
+        Z-axis interpolation parameters (Z_x1, Z_y1), (Z_x2, Z_y2)
+        Rotation interpolation parameters (R_x1, R_y1), (R_x2, R_y2)
+        Then, the interpolation parameters are as follows.
+        X_x1,Y_x1,Z_x1,R_x1,
+        X_y1,Y_y1,Z_y1,R_y1,
+        X_x2,Y_x2,Z_x2,R_x2,
+        X_y2,Y_y2,Z_y2,R_y2,
+
+        Y_x1,Z_x1,R_x1,X_y1,
+        Y_y1,Z_y1,R_y1,X_x2,
+        Y_x2,Z_x2,R_x2,X_y2,
+        Y_y2,Z_y2,R_y2, 01,
+        
+        Z_x1,R_x1,X_y1,Y_y1,
+        Z_y1,R_y1,X_x2,Y_x2,
+        Z_x2,R_x2,X_y2,Y_y2,
+        Z_y2,R_y2, 01, 00,
+        R_x1,X_y1,Y_y1,Z_y1,
+        R_y1,X_x2,Y_x2,Z_x2,
+        R_x2,X_y2,Y_y2,Z_y2,
+        R_y2, 01, 00, 00
+        */
+        //[4][4][4]
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number,
+        number, number, number, number
+    ];
+};
+
+export type VmdMorphFrame = {
+    morphName: string;
+    frameNum: number;
+    weight: number;
+};
+
+export type VmdCameraFrame = {
+    frameNum: number;
+    distance: number;
+    position: Vector3;
+    rotation: Vector3; // yaw, pitch, roll
+    interpolation: [
+        //range: 0..127
+        //default linear interpolation is 20, 107, 20, 107
+        //x_ax, x_bx, x_ay, x_by
+        number, number, number, number,
+        //y_ax, y_bx, y_ay, y_by
+        number, number, number, number,
+        //z_ax, z_bx, z_ay, z_by
+        number, number, number, number,
+        //rot_ax, rot_bx, rot_ay, rot_by
+        number, number, number, number,
+        //distance_ax, distance_bx, distance_ay, distance_by
+        number, number, number, number,
+        //angle_ax, angle_bx, angle_ay, angle_by
+        number, number, number, number
+    ]
+    fov: number;
+    perspective: number;
+};
+
+// #endregion
+
+// #region Vpd
 
 export type Vpd = {
-    metadata: {
-        coordinateSystem: CorrdinateSystem;
-        parentFile: string;
-        boneCount: number;
-    };
-    bones: {
-        name: string;
-        translation: [number, number, number];
-        quaternion: [number, number, number, number];
-    }[];
+    metadata: VpdMetadata;
+    bones: VpdBone[];
 };
+
+export type VpdMetadata = {
+    coordinateSystem: CorrdinateSystem;
+    parentFile: string;
+    boneCount: number;
+};
+
+export type VpdBone = {
+    name: string;
+    translation: Vector3;
+    quaternion: Quaternion;
+};
+
+// #endregion
 
 export class Parser {
     public static parsePmd(buffer: ArrayBufferLike, leftToRight: boolean): Pmd {
