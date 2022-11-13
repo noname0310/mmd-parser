@@ -1292,7 +1292,7 @@ export class Parser {
 
         const metadata: Partial<VmdMetadata> = {
             coordinateSystem: "left"
-        }
+        };
         
         vmd.metadata = metadata as VmdMetadata;
 
