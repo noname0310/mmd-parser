@@ -1,6 +1,6 @@
 {
-    "name": "mmd-parser",
-    "version": "0.1.0",
+    "name": "@noname0310/mmd-parser",
+    "version": "0.1.1",
     "description": "MMD parser",
     "main": "dist/index.js",
     "scripts": {
