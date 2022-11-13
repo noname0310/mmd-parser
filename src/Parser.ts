@@ -383,6 +383,9 @@ export type Vmd = {
     motions: VmdMotionFrame[];
     morphs: VmdMorphFrame[];
     cameras: VmdCameraFrame[];
+    lights: VmdLightFrame[];
+    shadows: VmdShadowFrame[];
+    properties: VmdPropertyFrame[];
 };
 
 export type VmdMetadata = {
@@ -392,6 +395,9 @@ export type VmdMetadata = {
     motionCount: number;
     morphCount: number;
     cameraCount: number;
+    lightCount: number;
+    shadowCount: number;
+    propertyCount: number;
 };
 
 export type VmdMotionFrame = {
@@ -480,6 +486,24 @@ export type VmdCameraFrame = {
     ]
     fov: number;
     perspective: number;
+};
+
+export type VmdLightFrame = {
+    frameNum: number;
+    color: Vector3;
+    direction: Vector3;
+};
+
+export type VmdShadowFrame = {
+    frameNum: number;
+    mode: 0 | 1 | 2;
+    distance: number;
+};
+
+export type VmdPropertyFrame = {
+    frameNum: number;
+    visible: boolean;
+    ikStates: { name: string, enabled: boolean }[];
 };
 
 // #endregion
@@ -1367,6 +1391,68 @@ export class Parser {
             }
         }
 
+        // parseLights
+        {
+            function parseLight(): VmdLightFrame {
+                const p: Partial<VmdLightFrame> = { };
+                p.frameNum = dv.getUint32();
+                p.color = dv.getFloat32Array(3) as Vector3;
+                p.direction = dv.getFloat32Array(3) as Vector3;
+                return p as VmdLightFrame;
+            }
+
+            metadata.lightCount = dv.getUint32();
+
+            vmd.lights = [];
+            for (let i = 0; i < metadata.lightCount; i++) {
+                vmd.lights.push(parseLight());
+            }
+        }
+
+        // parseShadows
+        {
+            function parseShadow(): VmdShadowFrame {
+                const p: Partial<VmdShadowFrame> = { };
+                p.frameNum = dv.getUint32();
+                p.mode = dv.getInt8() as VmdShadowFrame["mode"];
+                p.distance = dv.getFloat32();
+                return p as VmdShadowFrame;
+            }
+
+            metadata.shadowCount = dv.getUint32();
+
+            vmd.shadows = [];
+            for (let i = 0; i < metadata.shadowCount; i++) {
+                vmd.shadows.push(parseShadow());
+            }
+        }
+
+        // parseProperties
+        {
+            function parseProperty(): VmdPropertyFrame {
+                const p: Partial<VmdPropertyFrame> = { };
+                p.frameNum = dv.getUint32();
+                p.visible = dv.getInt8() === 1;
+                
+                const ikStateCount = dv.getUint32();
+                p.ikStates = [];
+                for (let i = 0; i < ikStateCount; i++) {
+                    const ikName = dv.getSjisStringsAsUnicode(20);
+                    const ikState = dv.getInt8() === 1;
+                    p.ikStates.push({ name: ikName, enabled: ikState });
+                }
+
+                return p as VmdPropertyFrame;
+            }
+
+            metadata.propertyCount = dv.getUint32();
+
+            vmd.properties = [];
+            for (let i = 0; i < metadata.propertyCount; i++) {
+                vmd.properties.push(parseProperty());
+            }
+        }
+
         if (leftToRight === true) this.leftToRightVmd(vmd as Vmd);
 
         return vmd as Vmd;
@@ -1499,11 +1585,17 @@ export class Parser {
             name: vmds[0].metadata.name,
             motionCount: 0,
             morphCount: 0,
-            cameraCount: 0
+            cameraCount: 0,
+            lightCount: 0,
+            shadowCount: 0,
+            propertyCount: 0
         };
         const motions = [];
         const morphs = [];
         const cameras = [];
+        const lights = [];
+        const shadows = [];
+        const properties = [];
 
         for (let i = 0; i < vmds.length; i++) {
             const v2 = vmds[i];
@@ -1511,6 +1603,9 @@ export class Parser {
             metadata.motionCount += v2.metadata.motionCount;
             metadata.morphCount += v2.metadata.morphCount;
             metadata.cameraCount += v2.metadata.cameraCount;
+            metadata.lightCount += v2.metadata.lightCount;
+            metadata.shadowCount += v2.metadata.shadowCount;
+            metadata.propertyCount += v2.metadata.propertyCount;
 
             for (let j = 0; j < v2.metadata.motionCount; j++) {
                 motions.push(v2.motions[j]);
@@ -1523,13 +1618,28 @@ export class Parser {
             for (let j = 0; j < v2.metadata.cameraCount; j++) {
                 cameras.push(v2.cameras[j]);
             }
+
+            for (let j = 0; j < v2.metadata.lightCount; j++) {
+                lights.push(v2.lights[j]);
+            }
+
+            for (let j = 0; j < v2.metadata.shadowCount; j++) {
+                shadows.push(v2.shadows[j]);
+            }
+
+            for (let j = 0; j < v2.metadata.propertyCount; j++) {
+                properties.push(v2.properties[j]);
+            }
         }
 
         return {
             metadata: metadata,
             motions: motions,
             morphs: morphs,
-            cameras: cameras
+            cameras: cameras,
+            lights: lights,
+            shadows: shadows,
+            properties: properties
         };
     }
 
