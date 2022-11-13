@@ -1373,11 +1373,13 @@ export class Parser {
     }
 
     public static parseVpd(text: string, leftToRight: boolean): Vpd {
-        const vpd = { };
+        const vpd: Partial<Vpd> = { };
 
-        vpd.metadata = { };
-        vpd.metadata.coordinateSystem = "left";
+        const metadata: Partial<VpdMetadata> = {
+            coordinateSystem: "left"
+        };
 
+        vpd.metadata = metadata as VpdMetadata;
         vpd.bones = [];
 
         const commentPatternG = /\/\/\w*(\r|\n|\r\n)/g;
@@ -1385,37 +1387,29 @@ export class Parser {
 
         const lines = text.replace(commentPatternG, "").split(newlinePattern);
 
-        function throwError() {
-
+        function throwError(): never {
             throw "the file seems not vpd file.";
-
         }
 
-        function checkMagic() {
-
+        // checkMagic
+        {
             if (lines[0] !== "Vocaloid Pose Data file") {
-
                 throwError();
-
             }
-
         }
 
-        function parseHeader() {
-
+        // parseHeader
+        {
             if (lines.length < 4) {
-
                 throwError();
-
             }
 
             vpd.metadata.parentFile = lines[2];
             vpd.metadata.boneCount = parseInt(lines[3]);
-
         }
 
-        function parseBones() {
-
+        // parseBones
+        {
             const boneHeaderPattern = /^\s*(Bone[0-9]+)\s*\{\s*(.*)$/;
             const boneVectorPattern = /^\s*(-?[0-9]+\.[0-9]+)\s*,\s*(-?[0-9]+\.[0-9]+)\s*,\s*(-?[0-9]+\.[0-9]+)\s*;/;
             const boneQuaternionPattern = /^\s*(-?[0-9]+\.[0-9]+)\s*,\s*(-?[0-9]+\.[0-9]+)\s*,\s*(-?[0-9]+\.[0-9]+)\s*,\s*(-?[0-9]+\.[0-9]+)\s*;/;
@@ -1427,7 +1421,6 @@ export class Parser {
             let q = null;
 
             for (let i = 4; i < lines.length; i++) {
-
                 const line = lines[i];
 
                 let result;
@@ -1435,100 +1428,68 @@ export class Parser {
                 result = line.match(boneHeaderPattern);
 
                 if (result !== null) {
-
                     if (n !== null) {
-
                         throwError();
-
                     }
-
                     n = result[2];
-
                 }
 
                 result = line.match(boneVectorPattern);
 
                 if (result !== null) {
-
                     if (v !== null) {
-
                         throwError();
-
                     }
 
                     v = [
-
                         parseFloat(result[1]),
                         parseFloat(result[2]),
                         parseFloat(result[3])
-
                     ];
-
                 }
 
                 result = line.match(boneQuaternionPattern);
 
                 if (result !== null) {
-
                     if (q !== null) {
-
                         throwError();
-
                     }
 
                     q = [
-
                         parseFloat(result[1]),
                         parseFloat(result[2]),
                         parseFloat(result[3]),
                         parseFloat(result[4])
-
                     ];
-
-
                 }
 
                 result = line.match(boneFooterPattern);
 
                 if (result !== null) {
-
                     if (n === null || v === null || q === null) {
-
                         throwError();
-
                     }
 
                     bones.push({
-
                         name: n,
-                        translation: v,
-                        quaternion: q
-
+                        translation: v as Vector3,
+                        quaternion: q as Quaternion
                     });
 
                     n = null;
                     v = null;
                     q = null;
-
                 }
-
             }
 
             if (n !== null || v !== null || q !== null) {
-
                 throwError();
-
             }
-
         }
 
-        checkMagic();
-        parseHeader();
-        parseBones();
+        if (leftToRight === true) this.leftToRightVpd(vpd as Vpd);
 
-        if (leftToRight === true) this.leftToRightVpd(vpd);
-
-        return vpd;
+        return vpd as Vpd;
     }
 
     public static mergeVmds(vmds: Vmd[]): Vmd {
