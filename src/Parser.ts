@@ -1287,14 +1287,17 @@ export class Parser {
     }
 
     public static parseVmd(buffer: ArrayBufferLike, leftToRight: boolean): Vmd {
-        const vmd = { };
+        const vmd: Partial<Vmd> = { };
         const dv = new DataViewEx(buffer);
 
-        vmd.metadata = { };
-        vmd.metadata.coordinateSystem = "left";
+        const metadata: Partial<VmdMetadata> = {
+            coordinateSystem: "left"
+        }
+        
+        vmd.metadata = metadata as VmdMetadata;
 
-        const parseHeader = function () {
-            const metadata = vmd.metadata;
+        // parseHeader
+        {
             metadata.magic = dv.getChars(30);
 
             if (metadata.magic !== "Vocaloid Motion Data 0002") {
@@ -1302,97 +1305,71 @@ export class Parser {
             }
 
             metadata.name = dv.getSjisStringsAsUnicode(20);
-        };
+        }
 
-        const parseMotions = function () {
-
-            const parseMotion = function () {
-
-                const p = { };
+        // parseMotions
+        {
+            function parseMotion(): VmdMotionFrame {
+                const p: Partial<VmdMotionFrame> = { };
                 p.boneName = dv.getSjisStringsAsUnicode(15);
                 p.frameNum = dv.getUint32();
-                p.position = dv.getFloat32Array(3);
-                p.rotation = dv.getFloat32Array(4);
-                p.interpolation = dv.getUint8Array(64);
-                return p;
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.rotation = dv.getFloat32Array(4) as Quaternion;
+                p.interpolation = dv.getUint8Array(64) as VmdMotionFrame["interpolation"];
+                return p as VmdMotionFrame;
+            }
 
-            };
-
-            const metadata = vmd.metadata;
             metadata.motionCount = dv.getUint32();
 
             vmd.motions = [];
             for (let i = 0; i < metadata.motionCount; i++) {
-
                 vmd.motions.push(parseMotion());
-
             }
+        }
 
-        };
-
-        const parseMorphs = function () {
-
-            const parseMorph = function () {
-
-                const p = { };
+        // parseMorphs
+        {
+            function parseMorph(): VmdMorphFrame {
+                const p: Partial<VmdMorphFrame> = { };
                 p.morphName = dv.getSjisStringsAsUnicode(15);
                 p.frameNum = dv.getUint32();
                 p.weight = dv.getFloat32();
-                return p;
+                return p as VmdMorphFrame;
+            }
 
-            };
-
-            const metadata = vmd.metadata;
             metadata.morphCount = dv.getUint32();
 
             vmd.morphs = [];
             for (let i = 0; i < metadata.morphCount; i++) {
-
                 vmd.morphs.push(parseMorph());
-
             }
+        }
 
-        };
-
-        const parseCameras = function () {
-
-            const parseCamera = function () {
-
-                const p = { };
+        // parseCameras
+        {
+            function parseCamera(): VmdCameraFrame {
+                const p: Partial<VmdCameraFrame> = { };
                 p.frameNum = dv.getUint32();
                 p.distance = dv.getFloat32();
-                p.position = dv.getFloat32Array(3);
-                p.rotation = dv.getFloat32Array(3);
-                p.interpolation = dv.getUint8Array(24);
+                p.position = dv.getFloat32Array(3) as Vector3;
+                p.rotation = dv.getFloat32Array(3) as Vector3;
+                p.interpolation = dv.getUint8Array(24) as VmdCameraFrame["interpolation"];
                 p.fov = dv.getUint32();
                 p.perspective = dv.getUint8();
-                return p;
+                return p as VmdCameraFrame;
+            }
 
-            };
-
-            const metadata = vmd.metadata;
             metadata.cameraCount = dv.getUint32();
 
             vmd.cameras = [];
             for (let i = 0; i < metadata.cameraCount; i++) {
-
                 vmd.cameras.push(parseCamera());
-
             }
+        }
 
-        };
+        if (leftToRight === true) this.leftToRightVmd(vmd as Vmd);
 
-        parseHeader();
-        parseMotions();
-        parseMorphs();
-        parseCameras();
-
-        if (leftToRight === true) this.leftToRightVmd(vmd);
-
-        // console.log( vmd ); // for console debug
-
-        return vmd;
-
+        return vmd as Vmd;
     }
 
     public static parseVpd(text: string, leftToRight: boolean): Vpd {
