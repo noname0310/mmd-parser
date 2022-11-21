@@ -17,7 +17,8 @@
         "noUnusedParameters": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "test/**/*"
     ],
     "ts-node": {
         "compilerOptions": {

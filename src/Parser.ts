@@ -424,7 +424,7 @@ export type VmdMotionFrame = {
         Y_y1,Z_y1,R_y1,X_x2,
         Y_x2,Z_x2,R_x2,X_y2,
         Y_y2,Z_y2,R_y2, 01,
-        
+
         Z_x1,R_x1,X_y1,Y_y1,
         Z_y1,R_y1,X_x2,Y_x2,
         Z_x2,R_x2,X_y2,Y_y2,
@@ -1000,7 +1000,7 @@ export class Parser {
                 p.indices = dv.getIndexArray(metadata.vertexIndexSize! as IndexType, 3, true) as Vector3;
                 return p as PmxFaceInfo;
             }
-            
+
             metadata.faceCount = dv.getUint32() / 3;
             pmx.faces = [];
 
@@ -1225,7 +1225,7 @@ export class Parser {
                 for (let i = 0; i < p.elementCount; i++) {
                     const e: Partial<PmxFrameInfo["elements"][number]> = { };
                     e.target = dv.getUint8();
-                    e.index = (e.target === 0) 
+                    e.index = (e.target === 0)
                         ? dv.getIndex(metadata.boneIndexSize! as IndexType, false)
                         : dv.getIndex(metadata.morphIndexSize! as IndexType, false);
                     p.elements.push(e as PmxFrameInfo["elements"][number]);
@@ -1317,7 +1317,7 @@ export class Parser {
         const metadata: Partial<VmdMetadata> = {
             coordinateSystem: "left"
         };
-        
+
         vmd.metadata = metadata as VmdMetadata;
 
         // parseHeader
@@ -1433,7 +1433,7 @@ export class Parser {
                 const p: Partial<VmdPropertyFrame> = { };
                 p.frameNum = dv.getUint32();
                 p.visible = dv.getInt8() === 1;
-                
+
                 const ikStateCount = dv.getUint32();
                 p.ikStates = [];
                 for (let i = 0; i < ikStateCount; i++) {

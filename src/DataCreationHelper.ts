@@ -6,7 +6,7 @@ export class DataCreationHelper {
     public static leftToRightVector3(v: Vector3): void {
         v[ 2 ] = -v[ 2 ];
     }
-    
+
     public static leftToRightQuaternion(q: Quaternion): void {
         q[ 0 ] = -q[ 0 ];
         q[ 1 ] = -q[ 1 ];
